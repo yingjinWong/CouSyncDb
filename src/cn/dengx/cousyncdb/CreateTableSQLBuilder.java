@@ -14,6 +14,7 @@ import cn.dengx.cousyncdb.Exceptions.NoPrimaryKeyException;
 import cn.dengx.cousyncdb.annotations.Ignore;
 import cn.dengx.cousyncdb.annotations.PrimaryKey;
 import cn.dengx.cousyncdb.annotations.Table;
+import cn.dengx.cousyncdb.annotations.Unique;
 import cn.dengx.cousyncdb.util.LogUtil;
 import cn.dengx.cousyncdb.util.SqlUtil;
 
@@ -47,9 +48,6 @@ public class CreateTableSQLBuilder {
 
     /**
      * 获得建表语句
-     *
-     * @param container
-     * @return
      */
     public static String builder(Container container) {
         if (container == null)
@@ -65,6 +63,7 @@ public class CreateTableSQLBuilder {
         builder.append(getTypesSQL(container));
         builder.append(Statement.BRACKET_RIGHT);
         builder.append(Statement.COLON);
+        LogUtil.d(CouSyncDb.TAG, CouSyncDb.LOG_HEADER + " create table sql=" + builder.toString());
         return builder.toString();
     }
 
@@ -119,9 +118,6 @@ public class CreateTableSQLBuilder {
 
     /**
      * get primary key
-     *
-     * @param container
-     * @return
      */
     public static String getPrimaryKeySQL(@NonNull Container container) {
         String primary = null;
@@ -131,32 +127,46 @@ public class CreateTableSQLBuilder {
             container.setPrimaryField(fieldContainer);
         }
         if (fieldContainer != null) {
-            String name = fieldContainer.getField().getName();
-            primary = getPrimaryString(name, fieldContainer.isAuto());
-        } else {
+            primary = getPrimaryString(fieldContainer);
+        } else {//类中找不到与主键同名field
             boolean checkPrimaryKey = CouSyncDb.Config.isCheckPrimaryKey();
 
-            PrimaryKey primaryKey = container.getPrimaryKey();
+            PrimaryKey primaryKey = container.getPrimaryKey();//类上注解设置主键
             if ((primaryKey == null || TextUtils.isEmpty(primaryKey.keyName())) && checkPrimaryKey)
                 throw new NoPrimaryKeyException("the class " + container.getModelName() +
                         " do not set primary key");
             else if (primaryKey != null && !TextUtils.isEmpty(primaryKey.keyName()))
-                primary = getPrimaryString(primaryKey.keyName(), primaryKey.autoIncrement());
+                primary = getPrimaryStringFromClass(primaryKey.keyName(), primaryKey.autoIncrement());
         }
         return primary;
     }
 
     /**
      * column type primary key (autoincrement)
-     *
-     * @param name
-     * @param isAuto
-     * @return
      */
-    private static String getPrimaryString(@NonNull String name, boolean isAuto) {
+    private static String getPrimaryStringFromClass(@NonNull String name, boolean isAuto) {
         String primary = name + Statement.INT + Statement.PRIMARY_KEY;
         if (isAuto)
             primary += Statement.AUTOINCREMENT;
+        primary += Statement.COMMA;
+        return primary;
+    }
+
+    private static String getPrimaryString(@NonNull FieldContainer container) {
+        Field field = container.getField();
+        Class type = field.getType();
+        String name = field.getName();
+        String primary;
+        if (type == int.class || type == Integer.class) {
+            primary = name + Statement.INT + Statement.PRIMARY_KEY;
+            if (container.isAuto()) primary += Statement.AUTOINCREMENT;
+        } else if (type == String.class || type == Character.class || type == CharSequence.class) {
+            primary = name + Statement.TEXT + Statement.PRIMARY_KEY;
+        } else
+            throw new NoPrimaryKeyException("the types of primary key field are int,integer," +
+                    "String,Character or CharSequence !");
+        Unique unique = field.getAnnotation(Unique.class);
+        if (unique != null) primary += Statement.UNIQUE;
         primary += Statement.COMMA;
         return primary;
     }
@@ -165,11 +175,10 @@ public class CreateTableSQLBuilder {
      * column type,
      * if boolean: column integer(1);
      *
-     * @param field
      * @return null 不是基本类型
      */
     private static String getTypeString(@NonNull Field field) {
-        String sql = null;
+        String sql;
         Class clazz = field.getType();
         String type = SqlUtil.getTypeOfClass(clazz);
         if (TextUtils.isEmpty(type)) {
@@ -180,15 +189,14 @@ public class CreateTableSQLBuilder {
         sql = field.getName() + type;
         if (clazz.equals(Boolean.class) || clazz.equals(boolean.class))
             sql += Statement.BRACKET_LEFT + 1 + Statement.BRACKET_RIGHT;
+        Unique unique = field.getAnnotation(Unique.class);
+        if (unique != null) sql += Statement.UNIQUE;
         return sql;
     }
 
     /**
      * 先根据TYPE注解获取FieldContainer，如果null再根据Field获取
      * 都取不到return null
-     *
-     * @param container
-     * @return
      */
     static FieldContainer getPrimaryFieldContainer(@NonNull Container container) {
 

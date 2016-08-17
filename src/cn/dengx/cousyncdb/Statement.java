@@ -16,6 +16,7 @@ public class Statement {
     public static final String CREATE = "CREATE";
     public static final String TABLE = " TABLE";
     public static final String IF_NOT_EXISTS = " IF NOT EXISTS";
+    public static final String UNIQUE = " UNIQUE";
 
 
     public static final String INT = " INTEGER";

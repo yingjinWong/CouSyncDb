@@ -94,7 +94,12 @@ public class Qurey implements OperateTask {
         }
         if (cursor != null && tClass != null) {
             try {
-                return BeanUtil.convertCursorToClasses(cursor, tClass);
+                if (rawQuery){
+                    if(cursor.moveToFirst())
+                        return BeanUtil.convertCursorToClass(cursor, tClass);
+                    else return null;
+                }
+                else return BeanUtil.convertCursorToClasses(cursor, tClass);
             } finally {
                 cursor.close();
             }

@@ -57,6 +57,11 @@ public class CouSyncDb {
         return instance;
     }
 
+    public static CouSyncDb getInstanceAfterInit() {
+        if (instance == null) throw new CouSyncDbException("you must invoke init() at first");
+        return instance;
+    }
+
     public void setDbName(String name) {
         if (openHelper != null) {
             throw new CouSyncDbException("method setDbName must invoke before init()");

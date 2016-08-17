@@ -4,6 +4,8 @@ import android.support.annotation.NonNull;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import cn.dengx.cousyncdb.Exceptions.CouSyncDbException;
@@ -115,17 +117,21 @@ public class Container {
         while (!clazz.equals(Object.class)) {
             Field[] fs = clazz.getDeclaredFields();
             Method[] ms = clazz.getDeclaredMethods();
+            ArrayList<Field> list = new ArrayList<>();
 
             for (Field f : fs) {
+                String m = Modifier.toString(f.getModifiers());
+                if (m.contains("static")) continue;//过滤静态变量
                 String key = f.getName();
                 String typeName = f.getType().getName();
-                if(BeanUtil.baseType(typeName))//基本类型简单检测
+                if (BeanUtil.baseType(typeName)) {//基本类型简单检测
                     fieldContainers.put(key, BeanUtil.create(f, ms));
-                else
+                    list.add(f);
+                } else
                     LogUtil.e(CouSyncDb.TAG, CouSyncDb.LOG_HEADER + "jump FieldContainer " + key +
                             " typeName=" + typeName + " in " + container.toString());
             }
-
+            fs = list.toArray(new Field[list.size()]);
             if (fields == null) {
                 fields = fs;
             } else {
@@ -157,7 +163,7 @@ public class Container {
             throw new CouSyncDbException("you must have get and set method on field");
         }
         container.setFields(fields);
-        FieldContainer pri =CreateTableSQLBuilder.getPrimaryFieldContainer(container);
+        FieldContainer pri = CreateTableSQLBuilder.getPrimaryFieldContainer(container);
         container.setPrimaryField(pri);
         return container;
     }

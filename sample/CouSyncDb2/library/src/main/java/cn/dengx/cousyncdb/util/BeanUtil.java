@@ -277,6 +277,7 @@ public class BeanUtil {
 
     static void fillObject(@NonNull Cursor cursor, int columnIndex, @NonNull Object o,
                            @NonNull HashMap<String, FieldContainer> fieldContainers) {
+        if (cursor.isNull(columnIndex)) return;//过滤null
         String key = cursor.getColumnName(columnIndex);
         FieldContainer fieldContainer = fieldContainers.get(key);
         Method set = fieldContainer.getMethodSet();
